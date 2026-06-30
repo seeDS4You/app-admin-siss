@@ -7,18 +7,24 @@ workflows:
       groups:
         - signing_credentials
       xcode: latest
-      cocoapods: default
     triggering:
       events:
         - push
       branch_patterns:
         - pattern: 'main'
     scripts:
-      - name: Initialize Xcode project settings
-        script: | 
-          echo "Building SISS architecture..."
+      - name: Auto-Generate Xcode Project
+        script: |
+          # Dynamically initialize a Swift package definition for the build environment
+          echo "// swift-tools-version:5.9" > Package.swift
+          echo "import PackageDescription" >> Package.swift
+          echo "let package = Package(name: \"siss\", platforms: [.iOS(.v17)], products: [.executable(name: \"siss\", targets: [\"siss\"])], targets: [.target(name: \"siss\", path: \".\", exclude: [\"codemagic.yaml\"])])" >> Package.swift
+          
+          # Force generate a temporary workspace project file
+          swift package generate-xcodeproj --output siss.xcodeproj
       - name: Build iOS App (.ipa)
         script: |
-          xcodebuild build -scheme "siss" -destination "generic/platform=iOS"
+          xcodebuild archive -project siss.xcodeproj -scheme siss -destination "generic/platform=iOS" -archivePath build/siss.xcarchive
+          xcodebuild -exportArchive -archivePath build/siss.xcarchive -exportPath build/ios/ipa -exportOptionsPlist Info.plist
     artifacts:
       - build/ios/ipa/*.ipa
