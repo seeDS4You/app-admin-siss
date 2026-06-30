@@ -13,23 +13,43 @@ workflows:
       branch_patterns:
         - pattern: 'main'
     scripts:
-      - name: Generate Native Xcode Project Blueprint
+      - name: Build and Package iOS Application
         script: |
-          # 1. Use the native Swift package configuration to build a clean structural workspace
-          echo "// swift-tools-version:5.9" > Package.swift
-          echo "import PackageDescription" >> Package.swift
-          echo "let package = Package(name: \"siss\", platforms: [.iOS(.v17)], products: [.library(name: \"siss\", targets: [\"siss\"])], targets: [.target(name: \"siss\", path: \".\", exclude: [\"codemagic.yaml\"])])" >> Package.swift
+          # 1. Create a clean native iOS Project template structure
+          swift package init --type executable
           
-          # 2. Force native file serialization into a standard project definition layout
-          xcodebuild -create-xcworkspace -workspace siss.xcworkspace
-      - name: Build iOS App Layout
-        script: |
-          # Compile all modules under a generic iOS hardware architecture profile
-          xcodebuild build -workspace siss.xcworkspace -scheme siss-Package -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO
+          # 2. Modify the package definition file to support native iOS build profiles
+          cat << 'EOF' > Package.swift
+          // swift-tools-version:5.9
+          import PackageDescription
+
+          let package = Package(
+              name: "siss",
+              platforms: [.iOS(.v17)],
+              products: [
+                  .executable(name: "siss", targets: ["siss"])
+              ],
+              targets: [
+                  .executableTarget(
+                      name: "siss",
+                      path: ".",
+                      exclude: ["codemagic.yaml", "Package.swift"]
+                  )
+              ]
+          )
+          EOF
+
+          # 3. Compile the package natively into an executable binary layout
+          swift build -c release --triple arm64-apple-ios17.0
           
-          # Bundle the build artifacts safely into the deployment container
-          mkdir -p build/ios/ipa
-          cd .build/plugins/outputs
-          zip -r ../../../build/ios/ipa/siss.ipa . -x "*.DS_Store" || true
+          # 4. Create the standard iOS app folder container structure
+          mkdir -p build/ios/ipa/Payload/siss.app
+          
+          # 5. Copy the compiled application binary into the package payload
+          cp .build/arm64-apple-ios17.0/release/siss build/ios/ipa/Payload/siss.app/siss
+          
+          # 6. Compress everything into an installable OTA deployment package
+          cd build/ios/ipa
+          zip -r siss.ipa Payload
     artifacts:
       - build/ios/ipa/*.ipa
