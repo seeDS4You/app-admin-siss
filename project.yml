@@ -1,8 +1,8 @@
-name: siss
+name: SISSAdmin
 options:
   bundleIdPrefix: com.siss
 targets:
-  siss:
+  SISSAdmin:
     type: application
     platform: iOS
     deploymentTarget: "17.0"

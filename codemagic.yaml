@@ -1,7 +1,7 @@
 workflows:
   admin-ios:
     name: SISS Admin iOS
-    instance_type: mac_mini_m1
+    instance_type: mac_mini_m2
     max_build_duration: 60
     environment:
       xcode: latest
@@ -12,16 +12,15 @@ workflows:
         - pattern: 'main'
     scripts:
       - name: Install xcodegen
-        script: brew install xcodegen
+        script: |
+          brew install xcodegen
       - name: Generate Xcode Project
         script: |
-          cd siss-admin-ios
+          # Runs directly in the root folder where project.yml sits
           xcodegen generate
       - name: Build IPA
         script: |
-          cd siss-admin-ios
-          
-          # 1. Compile the workspace project layout into a native app archive
+          # 1. Archive the project natively using the correct root path
           xcodebuild -project SISSAdmin.xcodeproj \
             -scheme SISSAdmin \
             -sdk iphoneos \
@@ -29,7 +28,7 @@ workflows:
             -archivePath $CM_BUILD_DIR/SISSAdmin.xcarchive \
             archive CODE_SIGNING_ALLOWED=NO
             
-          # 2. Package the compiled app payload folder structure into a genuine .ipa file
+          # 2. Package the compiled app folder into an installable .ipa binary
           mkdir -p $CM_BUILD_DIR/build/ios/ipa
           PayloadDir="$CM_BUILD_DIR/SISSAdmin.xcarchive/Products/Applications"
           cd $PayloadDir
