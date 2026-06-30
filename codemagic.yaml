@@ -1,11 +1,9 @@
 workflows:
-  ios-swift-workflow:
-    name: SISS iOS Build
+  admin-ios:
+    name: SISS Admin iOS
+    instance_type: mac_mini_m1
     max_build_duration: 60
-    instance_type: mac_mini_m2
     environment:
-      groups:
-        - signing_credentials
       xcode: latest
     triggering:
       events:
@@ -13,22 +11,28 @@ workflows:
       branch_patterns:
         - pattern: 'main'
     scripts:
-      - name: Generate Perfect Native Xcode Project
+      - name: Install xcodegen
+        script: brew install xcodegen
+      - name: Generate Xcode Project
         script: |
-          # Install the Xcode generator tool using Homebrew
-          brew install xcodegen
-          
-          # Generate a 100% stable, compliant .xcodeproj right on the build node
+          cd siss-admin-ios
           xcodegen generate
-      - name: Build iOS App (.ipa)
+      - name: Build IPA
         script: |
-          # Compile the generated app target cleanly into an archive
-          xcodebuild archive -project siss.xcodeproj -scheme siss -destination "generic/platform=iOS" -archivePath build/siss.xcarchive CODE_SIGNING_ALLOWED=NO
+          cd siss-admin-ios
           
-          # Package the compiled app binary payload into a functional .ipa container
-          mkdir -p build/ios/ipa
-          PayloadDir="build/siss.xcarchive/Products/Applications"
+          # 1. Compile the workspace project layout into a native app archive
+          xcodebuild -project SISSAdmin.xcodeproj \
+            -scheme SISSAdmin \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath $CM_BUILD_DIR/SISSAdmin.xcarchive \
+            archive CODE_SIGNING_ALLOWED=NO
+            
+          # 2. Package the compiled app payload folder structure into a genuine .ipa file
+          mkdir -p $CM_BUILD_DIR/build/ios/ipa
+          PayloadDir="$CM_BUILD_DIR/SISSAdmin.xcarchive/Products/Applications"
           cd $PayloadDir
-          zip -r ../../../../build/ios/ipa/siss.ipa *.app
+          zip -r $CM_BUILD_DIR/build/ios/ipa/SISSAdmin.ipa *.app
     artifacts:
       - build/ios/ipa/*.ipa
