@@ -1,0 +1,17 @@
+name: siss
+options:
+  bundleIdPrefix: com.siss
+targets:
+  siss:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Models
+      - path: Network
+      - path: Utils
+      - path: ViewModels
+      - path: Views
+      - path: SISSAdminApp.swift
+    info:
+      path: Info.plist

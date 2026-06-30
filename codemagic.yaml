@@ -13,43 +13,22 @@ workflows:
       branch_patterns:
         - pattern: 'main'
     scripts:
-      - name: Build and Package iOS Application
+      - name: Generate Perfect Native Xcode Project
         script: |
-          # 1. Create a clean native iOS Project template structure
-          swift package init --type executable
+          # Install the Xcode generator tool using Homebrew
+          brew install xcodegen
           
-          # 2. Modify the package definition file to support native iOS build profiles
-          cat << 'EOF' > Package.swift
-          // swift-tools-version:5.9
-          import PackageDescription
-
-          let package = Package(
-              name: "siss",
-              platforms: [.iOS(.v17)],
-              products: [
-                  .executable(name: "siss", targets: ["siss"])
-              ],
-              targets: [
-                  .executableTarget(
-                      name: "siss",
-                      path: ".",
-                      exclude: ["codemagic.yaml", "Package.swift"]
-                  )
-              ]
-          )
-          EOF
-
-          # 3. Compile the package natively into an executable binary layout
-          swift build -c release --triple arm64-apple-ios17.0
+          # Generate a 100% stable, compliant .xcodeproj right on the build node
+          xcodegen generate
+      - name: Build iOS App (.ipa)
+        script: |
+          # Compile the generated app target cleanly into an archive
+          xcodebuild archive -project siss.xcodeproj -scheme siss -destination "generic/platform=iOS" -archivePath build/siss.xcarchive CODE_SIGNING_ALLOWED=NO
           
-          # 4. Create the standard iOS app folder container structure
-          mkdir -p build/ios/ipa/Payload/siss.app
-          
-          # 5. Copy the compiled application binary into the package payload
-          cp .build/arm64-apple-ios17.0/release/siss build/ios/ipa/Payload/siss.app/siss
-          
-          # 6. Compress everything into an installable OTA deployment package
-          cd build/ios/ipa
-          zip -r siss.ipa Payload
+          # Package the compiled app binary payload into a functional .ipa container
+          mkdir -p build/ios/ipa
+          PayloadDir="build/siss.xcarchive/Products/Applications"
+          cd $PayloadDir
+          zip -r ../../../../build/ios/ipa/siss.ipa *.app
     artifacts:
       - build/ios/ipa/*.ipa
