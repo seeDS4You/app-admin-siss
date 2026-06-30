@@ -13,18 +13,27 @@ workflows:
       branch_patterns:
         - pattern: 'main'
     scripts:
-      - name: Auto-Generate Xcode Project
+      - name: Bootstrap Xcode Project Structure
         script: |
-          # Dynamically initialize a Swift package definition for the build environment
-          echo "// swift-tools-version:5.9" > Package.swift
-          echo "import PackageDescription" >> Package.swift
-          echo "let package = Package(name: \"siss\", platforms: [.iOS(.v17)], products: [.executable(name: \"siss\", targets: [\"siss\"])], targets: [.target(name: \"siss\", path: \".\", exclude: [\"codemagic.yaml\"])])" >> Package.swift
+          # 1. Download a clean, empty iOS project skeleton structure
+          git clone https://github.com/codemagic-ci-cd/cli-tools-templates.git /tmp/templates
+          cp -R /tmp/templates/ios-swift/* .
           
-          # Force generate a temporary workspace project file
-          swift package generate-xcodeproj --output siss.xcodeproj
+          # 2. Rename the generic blueprint project to match your app name
+          mv ios-swift.xcodeproj siss.xcodeproj
+          sed -i '' 's/ios-swift/siss/g' siss.xcodeproj/project.pbxproj
+          
+          # 3. Clean out template placeholders so your actual files take priority
+          rm -rf ContentView.swift ios_swiftApp.swift
       - name: Build iOS App (.ipa)
         script: |
-          xcodebuild archive -project siss.xcodeproj -scheme siss -destination "generic/platform=iOS" -archivePath build/siss.xcarchive
-          xcodebuild -exportArchive -archivePath build/siss.xcarchive -exportPath build/ios/ipa -exportOptionsPlist Info.plist
+          # Compile the app target cleanly using your injected MVVM code files
+          xcodebuild archive -project siss.xcodeproj -scheme siss -destination "generic/platform=iOS" -archivePath build/siss.xcarchive CODE_SIGNING_ALLOWED=NO
+          
+          # Package the final artifact payload folder layout
+          mkdir -p build/ios/ipa
+          PayloadDir="build/siss.xcarchive/Products/Applications"
+          cd $PayloadDir
+          zip -r ../../../../build/ios/ipa/siss.ipa *.app
     artifacts:
       - build/ios/ipa/*.ipa
