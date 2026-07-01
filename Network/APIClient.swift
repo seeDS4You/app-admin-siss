@@ -23,20 +23,18 @@ enum APIError: Error, LocalizedError {
     }
 }
 
+@MainActor
 final class APIClient: ObservableObject {
     static let shared = APIClient()
 
     private let baseURL = "https://allsiss.co.uk/api"
     private let session: URLSession
-    private var cookieStorage: HTTPCookieStorage {
-        return HTTPCookieStorage.shared
-    }
 
     @Published var isLoggedIn: Bool = false
 
     private init() {
         let config = URLSessionConfiguration.default
-        config.httpCookieStorage = cookieStorage
+        config.httpCookieStorage = HTTPCookieStorage.shared
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 60
         self.session = URLSession(configuration: config)
@@ -47,13 +45,13 @@ final class APIClient: ObservableObject {
         if let cookiesData = UserDefaults.standard.data(forKey: "admin_cookies"),
            let cookies = try? NSKeyedUnarchiver.unarchiveTopLevelObjectWithData(cookiesData) as? [HTTPCookie] {
             for cookie in cookies {
-                cookieStorage.setCookie(cookie)
+                HTTPCookieStorage.shared.setCookie(cookie)
             }
         }
     }
 
     private func saveCookies() {
-        if let cookies = cookieStorage.cookies(for: URL(string: "https://allsiss.co.uk")!) {
+        if let cookies = HTTPCookieStorage.shared.cookies(for: URL(string: "https://allsiss.co.uk")!) {
             if let data = try? NSKeyedArchiver.archivedData(withRootObject: cookies, requiringSecureCoding: false) {
                 UserDefaults.standard.set(data, forKey: "admin_cookies")
             }
@@ -62,9 +60,9 @@ final class APIClient: ObservableObject {
 
     private func clearCookies() {
         UserDefaults.standard.removeObject(forKey: "admin_cookies")
-        if let cookies = cookieStorage.cookies(for: URL(string: "https://allsiss.co.uk")!) {
+        if let cookies = HTTPCookieStorage.shared.cookies(for: URL(string: "https://allsiss.co.uk")!) {
             for cookie in cookies {
-                cookieStorage.deleteCookie(cookie)
+                HTTPCookieStorage.shared.deleteCookie(cookie)
             }
         }
     }
@@ -97,7 +95,7 @@ final class APIClient: ObservableObject {
             }
 
             if httpResponse.statusCode == 401 {
-                DispatchQueue.main.async { self.isLoggedIn = false }
+                isLoggedIn = false
                 throw APIError.unauthorized
             }
 
@@ -129,7 +127,7 @@ final class APIClient: ObservableObject {
             }
 
             if httpResponse.statusCode == 401 {
-                DispatchQueue.main.async { self.isLoggedIn = false }
+                isLoggedIn = false
                 throw APIError.unauthorized
             }
 
@@ -150,7 +148,7 @@ final class APIClient: ObservableObject {
             throw APIError.invalidURL
         }
         let user: AdminUser = try await perform(req)
-        DispatchQueue.main.async { self.isLoggedIn = true }
+        isLoggedIn = true
         return user
     }
 
@@ -159,7 +157,7 @@ final class APIClient: ObservableObject {
             throw APIError.invalidURL
         }
         try await performVoid(req)
-        DispatchQueue.main.async { self.isLoggedIn = false }
+        isLoggedIn = false
         clearCookies()
     }
 
@@ -381,7 +379,7 @@ final class APIClient: ObservableObject {
             }
 
             if httpResponse.statusCode == 401 {
-                DispatchQueue.main.async { self.isLoggedIn = false }
+                isLoggedIn = false
                 return .failure(.unauthorized)
             }
 
