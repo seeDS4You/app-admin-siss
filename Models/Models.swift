@@ -45,6 +45,12 @@ struct AdminUser: Codable, Identifiable {
     var fullName: String { "\(firstName) \(lastName)" }
 }
 
+struct LoginResponse: Codable {
+    let user: AdminUser?
+    let redirect: String?
+    let error: String?
+}
+
 struct UserRights: Codable {
     let id: Int
     let userId: Int

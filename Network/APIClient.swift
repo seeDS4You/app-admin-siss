@@ -147,9 +147,15 @@ final class APIClient: ObservableObject {
         guard let req = request(path: "/auth/login", method: "POST", body: body) else {
             throw APIError.invalidURL
         }
-        let user: AdminUser = try await perform(req)
-        isLoggedIn = true
-        return user
+        let response: LoginResponse = try await perform(req)
+        if let user = response.user {
+            isLoggedIn = true
+            return user
+        } else if let error = response.error {
+            throw APIError.serverError(400, error)
+        } else {
+            throw APIError.unknown
+        }
     }
 
     func logout() async throws {
@@ -163,7 +169,14 @@ final class APIClient: ObservableObject {
 
     func getMe() async throws -> AdminUser {
         guard let req = request(path: "/auth/me") else { throw APIError.invalidURL }
-        return try await perform(req)
+        let response: LoginResponse = try await perform(req)
+        if let user = response.user {
+            return user
+        } else if let error = response.error {
+            throw APIError.serverError(400, error)
+        } else {
+            throw APIError.unknown
+        }
     }
 
     // MARK: - Dashboard
