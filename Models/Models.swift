@@ -527,14 +527,14 @@ struct UpdateUserRequest: Codable {
 }
 
 struct UpdateRightsRequest: Codable {
-    let shifts: Bool?
-    let finance: Bool?
-    let docs: Bool?
-    let clients: Bool?
-    let events: Bool?
-    let news: Bool?
-    let scan: Bool?
-    let admin: Bool?
+    var shifts: Bool? = nil
+    var finance: Bool? = nil
+    var docs: Bool? = nil
+    var clients: Bool? = nil
+    var events: Bool? = nil
+    var news: Bool? = nil
+    var scan: Bool? = nil
+    var admin: Bool? = nil
 
     enum CodingKeys: String, CodingKey {
         case shifts
