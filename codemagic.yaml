@@ -16,11 +16,10 @@ workflows:
           brew install xcodegen
       - name: Generate Xcode Project
         script: |
-          # Runs directly in the root folder where project.yml sits
           xcodegen generate
       - name: Build IPA
         script: |
-          # 1. Archive the project natively using the correct root path
+          # 1. Archive the project natively
           xcodebuild -project SISSAdmin.xcodeproj \
             -scheme SISSAdmin \
             -sdk iphoneos \
@@ -28,10 +27,14 @@ workflows:
             -archivePath $CM_BUILD_DIR/SISSAdmin.xcarchive \
             archive CODE_SIGNING_ALLOWED=NO
             
-          # 2. Package the compiled app folder into an installable .ipa binary
-          mkdir -p $CM_BUILD_DIR/build/ios/ipa
-          PayloadDir="$CM_BUILD_DIR/SISSAdmin.xcarchive/Products/Applications"
-          cd $PayloadDir
-          zip -r $CM_BUILD_DIR/build/ios/ipa/SISSAdmin.ipa *.app
+          # 2. Build a strict, valid iOS Payload directory structure
+          mkdir -p $CM_BUILD_DIR/build/ios/ipa/Payload
+          
+          # 3. Copy the compiled .app folder into the Payload directory
+          cp -R $CM_BUILD_DIR/SISSAdmin.xcarchive/Products/Applications/SISSAdmin.app $CM_BUILD_DIR/build/ios/ipa/Payload/
+          
+          # 4. Zip the Payload folder itself into the final .ipa archive
+          cd $CM_BUILD_DIR/build/ios/ipa
+          zip -r SISSAdmin.ipa Payload
     artifacts:
       - build/ios/ipa/*.ipa
